@@ -125,7 +125,7 @@ class DialogEvaluator:
             eval_dims = dims
 
         for dim in eval_dims:
-            print('Evaluating {} of {} samples !!!'.format(dim, n_data))
+            # print('Evaluating {} of {} samples !!!'.format(dim, n_data))
 
             # Calculate summation score for 'engagingness'
             if dim == 'engagingness':
