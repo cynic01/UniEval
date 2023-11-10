@@ -1,18 +1,29 @@
+import sys
 import pandas as pd
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 300)
+from pathlib import Path
 from tqdm import tqdm
 tqdm.pandas()
+
 from utils import convert_to_json
 from metric.evaluator import get_evaluator
 
-model_name = "pythia-2.8b-deduped"
-run_name = "driven-wood-164"
-checkpoint_name = "iter-000299-ckpt"
-dataset_name = "oasst1"
+# support running without installing as a package
+wd = Path(__file__).parent.parent.resolve()
+sys.path.append(str(wd))
+
+import importlib
+ckpts = importlib.import_module("lit-gpt.scripts.batch_convert_lit_checkpoint")
+
+chosen = ckpts.oasst1_dolly_lingua
 
 # Example for dialogue response generation
 task = 'dialogue'
 # Initialize evaluator for a specific task
 evaluator = get_evaluator(task)
+# dimensions: ['naturalness', 'coherence', 'engagingness', 'groundedness', 'understandability']
 
 # # a list of dialogue histories
 # src_list = ['hi , do you know much about the internet ? \n i know a lot about different sites and some website design , how about you ? \n\n']
@@ -23,7 +34,7 @@ evaluator = get_evaluator(task)
 
 def row_eval(row):
     # Prepare data for pre-trained evaluators
-    data = convert_to_json(output_list=[row['out']], src_list=[row['label']], context_list=[])
+    data = convert_to_json(output_list=[row['output']], src_list=[row['input']], ref_list=[row['label']], context_list=[''])
 
     # Get multi-dimensional evaluation scores
     scores_dict = {}
@@ -34,7 +45,11 @@ def row_eval(row):
         scores_dict[dim] = round(cur_score / len(eval_scores), 6)
     return scores_dict
 
-df = pd.read_csv(f'/data/echen/lit-gpt/out/inference/{model_name}-{dataset_name}-{checkpoint_name}.csv', names=['src', 'out', 'label'])
-scores = df.progress_apply(row_eval, axis=1, result_type='expand')
-final = pd.concat(df, scores, axis=1)
-final.to_csv(f'/data/echen/lit-gpt/out/inference/{model_name}-{dataset_name}-{checkpoint_name}-eval.csv', index=False)
+for model_name, _, checkpoint_name, dataset_name in chosen:
+    name = '-'.join([model_name, dataset_name, checkpoint_name])
+    print(name)
+    df = pd.read_pickle(wd / f'lit-gpt/out/inference/{name}.pkl')
+    scores = df.progress_apply(row_eval, axis=1, result_type='expand')
+    print(scores.describe())
+    final = pd.concat([df, scores], axis=1)
+    final.to_pickle(wd / f'lit-gpt/out/inference/{name}-eval.pkl')
