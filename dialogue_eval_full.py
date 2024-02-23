@@ -45,7 +45,8 @@ def row_eval(row):
         scores_dict[dim] = round(cur_score / len(eval_scores), 6)
     return scores_dict
 
-for model_name, _, checkpoint_name, dataset_name in chosen:
+# for model_name, _, checkpoint_name, dataset_name in chosen:
+def evaluate_ckpt(model_name: str, checkpoint_name: str, dataset_name: str) -> None:
     name = '-'.join([model_name, dataset_name, checkpoint_name])
     print(name)
     df = pd.read_pickle(wd / f'lit-gpt/out/inference/{name}.pkl')
@@ -53,3 +54,9 @@ for model_name, _, checkpoint_name, dataset_name in chosen:
     print(scores.describe())
     final = pd.concat([df, scores], axis=1)
     final.to_pickle(wd / f'lit-gpt/out/inference/{name}-eval.pkl')
+
+
+if __name__ == "__main__":
+    from jsonargparse import CLI
+
+    CLI(evaluate_ckpt)
